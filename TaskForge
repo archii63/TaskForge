@@ -28,16 +28,6 @@ python taskforge.py delete 1
 ```
 
 ## 🧠 Project Structure
-
-```
-taskforge/
-│── taskforge.py
-│── tasks.json
-│── README.md
-```
-
----
-
 ## 🧩 Source Code
 
 ```python
@@ -71,7 +61,14 @@ def list_tasks():
     for i, t in enumerate(tasks, 1):
         status = "✔" if t["done"] else "✘"
         print(f"{i}. [{status}] {t['task']}")
+```
+taskforge/
+│── taskforge.py
+│── tasks.json
+│── README.md
+```
 
+---
 def mark_done(index):
     tasks = load_tasks()
     if 0 < index <= len(tasks):
