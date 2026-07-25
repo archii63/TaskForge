@@ -20,13 +20,6 @@ pip install -r requirements.txt
 
 ## ▶️ Usage
 
-```bash
-python taskforge.py add "Learn Python"
-python taskforge.py list
-python taskforge.py done 1
-python taskforge.py delete 1
-```
-
 ## 🧠 Project Structure
 ## 🧩 Source Code
 
@@ -102,9 +95,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+```bash
+python taskforge.py add "Learn Python"
+python taskforge.py list
+python taskforge.py done 1
+python taskforge.py delete 1
 ```
 
----
 
 ## ⭐ Contributing
 
