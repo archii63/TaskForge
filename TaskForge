@@ -1,113 +1,43 @@
-# TaskForge 🔧
+# NebulaGuard
 
-A simple and powerful CLI tool to manage your daily tasks efficiently.
+NebulaGuard is a modern file monitoring and backup utility written in Python.
 
-## 🚀 Features
+## Features
 
-* Add new tasks
-* List all tasks
-* Mark tasks as completed
-* Delete tasks
-* Persistent local storage using JSON
+- Monitor directories in real-time
+- Automatic versioned backups
+- Duplicate file detection
+- Restore previous file versions
+- HTML & JSON reports
+- Cross-platform support
 
-## 📦 Installation
+## Installation
 
 ```bash
-git clone https://github.com/your-username/taskforge.git
-cd taskforge
+git clone https://github.com/yourusername/NebulaGuard.git
+
+cd NebulaGuard
 pip install -r requirements.txt
-```
-
-## ▶️ Usage
-
-## 🧠 Project Structure
-## 🧩 Source Code
-
-```python
-import json
-import sys
-from pathlib import Path
-
-TASKS_FILE = Path("tasks.json")
-
-def load_tasks():
-    if TASKS_FILE.exists():
-        with open(TASKS_FILE, "r") as f:
-            return json.load(f)
-    return []
-def add_task(task):
-    tasks = load_tasks()
-    tasks.append({"task": task, "done": False})
-    save_tasks(tasks)
-    print(f"✅ Task added: {task}")
-
-def list_tasks():
-    tasks = load_tasks()
-    if not tasks:
-        print("📭 No tasks found.")
-        return
-    for i, t in enumerate(tasks, 1):
-        status = "✔" if t["done"] else "✘"
-        print(f"{i}. [{status}] {t['task']}")
-```
-taskforge/
-│── taskforge.py
-│── tasks.json
-│── README.md
-```
+python nebulaguard.py --watch ./Documents
+[INFO] Monitoring: ./Documents
+[INFO] File modified: report.docx
+[BACKUP] Version saved.
+[REPORT] report.html generated.
 
 ---
-def mark_done(index):
-    tasks = load_tasks()
-    if 0 < index <= len(tasks):
-        tasks[index - 1]["done"] = True
-        save_tasks(tasks)
-        print("🎉 Task marked as completed.")
-    else:
-        print("❌ Invalid task number.")
 
-def delete_task(index):
-    tasks = load_tasks()
-    if 0 < index <= len(tasks):
-        removed = tasks.pop(index - 1)
-        save_tasks(tasks)
-        print(f"🗑 Deleted: {removed['task']}")
-    else:
-        print("❌ Invalid task number.")
+### Folder Structure
 
-def main():
-    if len(sys.argv) < 2:
-        print("Usage: add/list/done/delete")
-        return
-
-    command = sys.argv[1]
-
-    if command == "add":
-        add_task(" ".join(sys.argv[2:]))
-    elif command == "list":
-        list_tasks()
-    elif command == "done":
-        mark_done(int(sys.argv[2]))
-    elif command == "delete":
-        delete_task(int(sys.argv[2]))
-    else:
-        print("❌ Unknown command.")
-
-if __name__ == "__main__":
-    main()
-
-```bash
-python taskforge.py add "Learn Python"
-python taskforge.py list
-python taskforge.py done 1
-python taskforge.py delete 1
-```
-
-
-## ⭐ Contributing
-
-Pull requests are welcome. For major changes, please open an issue first.
-
-## 📄 License
-
-MIT License
+```text
+NebulaGuard/
+│
+├── nebulaguard.py
+├── backup.py
+├── monitor.py
+├── hashing.py
+├── report.py
+├── config.yaml
+├── requirements.txt
+├── README.md
+├── LICENSE
+└── backups/
