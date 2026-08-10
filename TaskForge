@@ -4,12 +4,12 @@ NebulaGuard is a modern file monitoring and backup utility written in Python.
 
 ## Features
 
-- Monitor directories in real-time
-- Automatic versioned backups
-- Duplicate file detection
 - Restore previous file versions
 - HTML & JSON reports
 - Cross-platform support
+- Monitor directories in real-time
+- Automatic versioned backups
+- Duplicate file detection
 
 ## Installation
 
