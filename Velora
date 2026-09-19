@@ -1,0 +1,240 @@
+velora/
+├── velora.py
+├── config.json
+├── requirements.txt
+├── README.md
+└── .gitignore
+# velora.py
+"""
+Velora - Lightweight API Health Monitor
+
+A simple, production-oriented CLI tool for monitoring API endpoints.
+"""
+
+import argparse
+import json
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict, dataclass
+from datetime import datetime, timezone
+from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
+
+@dataclass
+class CheckResult:
+    name: str
+    url: str
+    status: str
+    status_code: int | None
+    latency_ms: float | None
+    checked_at: str
+    error: str | None = None
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def check_endpoint(endpoint: dict[str, Any], timeout: float) -> CheckResult:
+    name = endpoint["name"]
+    url = endpoint["url"]
+
+    request = Request(
+        url,
+        headers={
+            "User-Agent": "Velora/1.0",
+            "Accept": "application/json, text/plain, */*",
+        },
+        method="GET",
+    )
+
+    start = time.perf_counter()
+
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            latency = (time.perf_counter() - start) * 1000
+
+            return CheckResult(
+                name=name,
+                url=url,
+                status="healthy",
+                status_code=response.status,
+                latency_ms=round(latency, 2),
+                checked_at=utc_now(),
+            )
+
+    except HTTPError as exc:
+        latency = (time.perf_counter() - start) * 1000
+
+        return CheckResult(
+            name=name,
+            url=url,
+            status="unhealthy",
+            status_code=exc.code,
+            latency_ms=round(latency, 2),
+            checked_at=utc_now(),
+            error=f"HTTP {exc.code}",
+        )
+
+    except (URLError, TimeoutError) as exc:
+        latency = (time.perf_counter() - start) * 1000
+
+        return CheckResult(
+            name=name,
+            url=url,
+            status="unreachable",
+            status_code=None,
+            latency_ms=round(latency, 2),
+            checked_at=utc_now(),
+            error=str(exc.reason) if isinstance(exc, URLError) else "Request timed out",
+        )
+
+    except Exception as exc:
+        return CheckResult(
+            name=name,
+            url=url,
+            status="error",
+            status_code=None,
+            latency_ms=None,
+            checked_at=utc_now(),
+            error=str(exc),
+        )
+
+
+def load_config(path: str) -> dict[str, Any]:
+    try:
+        with open(path, "r", encoding="utf-8") as file:
+            config = json.load(file)
+    except FileNotFoundError:
+        print(f"Configuration file not found: {path}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as exc:
+        print(f"Invalid JSON configuration: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+    endpoints = config.get("endpoints")
+
+    if not isinstance(endpoints, list) or not endpoints:
+        print("Configuration must contain a non-empty 'endpoints' list.", file=sys.stderr)
+        sys.exit(1)
+
+    for endpoint in endpoints:
+        if not isinstance(endpoint, dict):
+            print("Each endpoint must be an object.", file=sys.stderr)
+            sys.exit(1)
+
+        if "name" not in endpoint or "url" not in endpoint:
+            print("Each endpoint requires 'name' and 'url'.", file=sys.stderr)
+            sys.exit(1)
+
+    return config
+
+
+def run_checks(config: dict[str, Any], timeout: float, workers: int) -> list[CheckResult]:
+    endpoints = config["endpoints"]
+    results: list[CheckResult] = []
+
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        futures = [
+            executor.submit(check_endpoint, endpoint, timeout)
+            for endpoint in endpoints
+        ]
+
+        for future in as_completed(futures):
+            results.append(future.result())
+
+    return sorted(results, key=lambda result: result.name.lower())
+
+
+def print_summary(results: list[CheckResult]) -> None:
+    healthy = sum(result.status == "healthy" for result in results)
+    total = len(results)
+
+    print("\nVelora API Health Report")
+    print("=" * 72)
+
+    for result in results:
+        latency = (
+            f"{result.latency_ms:.2f} ms"
+            if result.latency_ms is not None
+            else "-"
+        )
+
+        print(
+            f"{result.name:<20} "
+            f"{result.status:<12} "
+            f"{str(result.status_code or '-'):>5}  "
+            f"{latency:>12}"
+        )
+
+        if result.error:
+            print(f"  └─ {result.error}")
+
+    print("=" * 72)
+    print(f"Healthy: {healthy}/{total}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Velora - Lightweight API Health Monitor"
+    )
+
+    parser.add_argument(
+        "-c",
+        "--config",
+        default="config.json",
+        help="Path to the configuration file.",
+    )
+
+    parser.add_argument(
+        "-t",
+        "--timeout",
+        type=float,
+        default=5.0,
+        help="Request timeout in seconds.",
+    )
+
+    parser.add_argument(
+        "-w",
+        "--workers",
+        type=int,
+        default=8,
+        help="Maximum number of concurrent checks.",
+    )
+
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output results as JSON.",
+    )
+
+    args = parser.parse_args()
+
+    if args.timeout <= 0:
+        parser.error("Timeout must be greater than zero.")
+
+    if args.workers <= 0:
+        parser.error("Workers must be greater than zero.")
+
+    config = load_config(args.config)
+    results = run_checks(config, args.timeout, args.workers)
+
+    if args.json:
+        print(
+            json.dumps(
+                [asdict(result) for result in results],
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+    else:
+        print_summary(results)
+
+    return 0 if all(result.status == "healthy" for result in results) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
